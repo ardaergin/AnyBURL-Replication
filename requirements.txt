@@ -1,0 +1,10 @@
+jupyter
+ipykernel
+ipywidgets
+setuptools==75.8.0
+wheel==0.45.1
+numpy==1.26.4
+torch==2.2.2
+datasets
+tqdm
+# run `pip install torch_geometric --no-deps` for datasets
