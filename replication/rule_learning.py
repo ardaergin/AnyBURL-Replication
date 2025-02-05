@@ -3,9 +3,9 @@ import time
 import json
 import pickle
 from typing import Callable, Dict, List, Optional
-from algorithm.knowledge_graph import KnowledgeGraph
-from algorithm.path_sampling import sample_bottom_rule
-from algorithm.rule_generalization.GeneralizedRule_withConf import generalize_bottom_rule, GeneralizedRule
+from .knowledge_graph import KnowledgeGraph
+from .path_sampling import sample_bottom_rule
+from .rule_generalization import generalize_bottom_rule, GeneralizedRule
 
 def AnyBURL(
     kg: KnowledgeGraph,
@@ -20,6 +20,7 @@ def AnyBURL(
     # only those rules that generate at least two correct predictions, 
     # which is a very lax criteria."
     # I defined this default quality function below
+    dataset_name: Optional[str] = None
 ) -> Dict[str, GeneralizedRule]:
     """
     Anytime Bottom-up Rule Learning implementation that follows "Algorithm 1" in Meilicke et al. (2019). 
@@ -39,6 +40,22 @@ def AnyBURL(
     Returns:
       A dictionary of learned rules (keyed by their canonical string) mapping to GeneralizedRule objects.
     """
+    # For saving the rules
+    os.makedirs("rules", exist_ok=True)
+    if dataset_name is None:
+        # If no dataset name is provided, fall back to timestamping.
+        session_timestamp = time.strftime('%Y%m%d_%H%M%S')
+        session_filename = f"rules_session_{session_timestamp}.txt"
+    else:
+        session_filename = f"rules_session_{dataset_name}.txt"
+    session_filepath = os.path.join("rules", session_filename)
+    
+    with open(session_filepath, "a", encoding="utf-8") as fout:
+        if dataset_name is None:
+            fout.write(f"# New training session started at {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        else:
+            fout.write(f"# New training session for dataset {dataset_name} started at {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+
     # Setting the default quality function:
     if quality_function is None:
         def quality_fn(rule: GeneralizedRule) -> bool:
@@ -47,7 +64,7 @@ def AnyBURL(
 
     # Starting with path length = 2 (head triple + one body triple)
     n = 2
-    # Initializing class attribute to store the rules:
+    # Dictionary to store all learned rules (for duplicate filtering)
     global_rules: Dict[str, GeneralizedRule] = {}
     
     iteration = 0
@@ -55,8 +72,13 @@ def AnyBURL(
     while time.time() - total_start < max_total_time:
         iteration += 1
 
-        # When n==3 and alternating cyclic sampling is enabled, choose mode based on iteration parity
-        sample_mode = "cyclic" if (n == 3 and alternate_cyclic_sampling and iteration % 2 == 1) else "all"
+        # Alternating between cyclic and all sampling
+        # Authors mention that it is difficult to find cyclics after n==3
+        # and they say they turn this off after n==3
+        if n == 3 and alternate_cyclic_sampling and iteration % 2 == 1:
+            sample_mode = "cyclic"
+        else:
+            sample_mode = "all"
 
         R_s: Dict[str, GeneralizedRule] = {}  # Rules discovered during this time span
         span_start = time.time()
@@ -79,7 +101,7 @@ def AnyBURL(
                 rule.calculate_confidence(kg, sample_size=sample_size, pc=pc)
 
                 if quality_function(rule):
-                    canonical_str = str(rule)  # for duplicate detection
+                    canonical_str = rule.to_logical_string()  # for duplicate detection
                     R_s[canonical_str] = rule
 
         # Checking saturation (the fraction of new rules that were already seen)
@@ -94,5 +116,13 @@ def AnyBURL(
         global_rules.update(R_s)
         print(f"Iteration {iteration}: n = {n}, new rules = {len(R_s)}, saturation = {saturation:.2f}, "
               f"total rules learned = {len(global_rules)}")
+        
+        # ----------------------------------------------------
+        with open(session_filepath, "a", encoding="utf-8") as fout:
+            fout.write(f"\n# Iteration {iteration}: n = {n}, new rules = {len(R_s)}, "
+                       f"saturation = {saturation:.4f}, total rules learned = {len(global_rules)}\n")
+            for rule_str in R_s.keys():
+                fout.write(rule_str + "\n")
+        # ----------------------------------------------------
 
     return global_rules

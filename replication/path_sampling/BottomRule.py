@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Set
-from algorithm.knowledge_graph import KnowledgeGraph, Triple
+from ..knowledge_graph import KnowledgeGraph, Triple
 
 @dataclass
 class BottomRule:

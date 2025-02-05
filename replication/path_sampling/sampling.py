@@ -1,5 +1,5 @@
 import random
-from algorithm.knowledge_graph import KnowledgeGraph, Triple
+from ..knowledge_graph import KnowledgeGraph, Triple
 from .BottomRule import BottomRule
 
 def pick_step_direction(direction_allowed):
@@ -162,12 +162,14 @@ def sample_bottom_rule(kg: KnowledgeGraph, n: int = 2, direction_allowed: str = 
     # ---------------------------------
     # 4) Check if cyclic bottom rule, and add it as an attribute
     # ---------------------------------
-    if bottom_rule.start_from == 'subject':
-        if current_node == bottom_rule.head.object:
-            bottom_rule.is_cyclical = True
-    else:
-        if current_node == bottom_rule.head.subject:
-            bottom_rule.is_cyclical = True
+    # if bottom_rule.start_from == 'subject':
+    #     if current_node == bottom_rule.head.object:
+    #         bottom_rule.is_cyclical = True
+    # else:
+    #     if current_node == bottom_rule.head.subject:
+    #         bottom_rule.is_cyclical = True
+    if current_node == bottom_rule.head.object or current_node == bottom_rule.head.subject:
+        bottom_rule.is_cyclical = True
 
     # Return the bottom rule of length = (1) head + (length-1) body
     return bottom_rule

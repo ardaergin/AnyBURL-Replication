@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Dict, Any, Optional
 import random
-from algorithm.knowledge_graph import Triple, KnowledgeGraph
-from algorithm.path_sampling import BottomRule
+from ..knowledge_graph import Triple, KnowledgeGraph
+from ..path_sampling import BottomRule
 
 @dataclass
 class GeneralizedRule:

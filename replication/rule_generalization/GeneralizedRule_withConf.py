@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Dict, Set, Any, Optional
 import random
-from algorithm.knowledge_graph import Triple, KnowledgeGraph
-from algorithm.path_sampling import BottomRule
+from ..knowledge_graph import Triple, KnowledgeGraph
+from ..path_sampling import BottomRule
+
 
 @dataclass
 class GeneralizedRule:
@@ -30,7 +31,7 @@ class GeneralizedRule:
             self.confidence = None
             return
 
-        # Validate rule type and C_rule_with combination
+        # Validate rule type and AC1 variant
         if self.rule_type not in ["AC1", "AC2", "C"]:
             raise ValueError("rule_type must be one of: AC1, AC2, C")
         if self.rule_type == "AC1" and self.bottom_rule.is_cyclical and self.AC1_rule_variant not in ["Y_as_constant", "X_as_constant"]:
@@ -114,7 +115,7 @@ class GeneralizedRule:
         # Get the variables that need to be bound
         variable_bindings = self._get_variable_bindings()
         
-        # Sample body groundings
+        # Sampling body groundings
         for _ in range(sample_size):
             # Try to find a valid body grounding
             grounding = self._sample_body_grounding(kg, variable_bindings)
@@ -129,7 +130,7 @@ class GeneralizedRule:
         
         # Calculate confidence with smoothing
         if self.body_groundings_count > 0:
-            self.confidence = (self.head_groundings_count) / (self.body_groundings_count + pc)
+            self.confidence = (self.head_groundings_count + pc) / (self.body_groundings_count + pc)
         else:
             self.confidence = 0.0
             
@@ -242,6 +243,22 @@ class GeneralizedRule:
         head_obj = grounding.get(head_obj_key, self.generalized_head.object)
         
         return kg.has_fact(head_subj, self.generalized_head.relation, head_obj)
+
+    def to_logical_string(self) -> str:
+        # Head
+        head_triple = self.bottom_rule.head
+        head_str = f"{head_triple.relation}({self.node_mappings[head_triple.subject]}, {self.node_mappings[head_triple.object]})"
+
+        # Body
+        body_parts = []
+        for triple in self.bottom_rule.body:
+            part = f"{triple.relation}({self.node_mappings[triple.subject]}, {self.node_mappings[triple.object]})"
+            body_parts.append(part)
+
+        if body_parts:
+            return f"{head_str} <- {', '.join(body_parts)}"
+        else:
+            return head_str
 
     def __str__(self) -> str:
         if self.bottom_rule is None:
